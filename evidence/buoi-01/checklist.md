@@ -1,0 +1,15 @@
+- [x] Pulled required images
+- [x] Ran `hello-world` container
+- [x] Started mini-stack compose and checked nginx + registry
+- [x] Collected tool versions and image list
+- [ ] Wrote service-boundary.md (stub exists)
+# Checklist
+- [ ] Docker daemon chạy
+- [ ] Docker Compose v2 chạy
+- [ ] hello-world PASS
+- [ ] Nginx mini-stack PASS
+- [ ] Registry mini-stack PASS
+- [ ] Đã đọc log PASS/WARN/FAIL
+- [ ] Đã hoàn thiện service-boundary.md
+- [ ] Đã chạy verify_submission.py
+- [ ] Repository cá nhân truy cập được
