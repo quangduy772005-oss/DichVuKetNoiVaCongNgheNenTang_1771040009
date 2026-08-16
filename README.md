@@ -1,15 +1,14 @@
 # FIT4110 Portfolio
 
-Đây là repo nộp bài theo nhóm, chỉ giữ các bài Lab đã hoàn thành và đã được sắp xếp theo từng thư mục riêng.
+## C?u tr�c repo
 
-## Cấu trúc repo
+- [student-kit](student-kit) � gi? nguy�n t�i li?u / source g?c c?a Student Kit
+- [lab01](lab01) � b�i Lab 1
+- [lab02](lab02) � source Lab 2 dang gi? ? local, kh�ng d?y l�n GitHub
+- [lab03](lab03) � b�i Lab 3
 
-- [lab01](lab01) — nội dung Lab 1, minh chứng và service boundary
-- [lab03](lab03) — nội dung Lab 3, Postman + mock testing
+## M?c ti�u
 
-## Ghi chú
-
-- README ở root này là trang tổng quan của portfolio, không phải nội dung Lab 1.
-- Nội dung chi tiết của Lab 1 đã được đặt trong thư mục [lab01/README.md](lab01/README.md).
-- Lab 2 đã được bỏ khỏi repo public theo yêu cầu.
-
+- Gi? Student Kit ri�ng d? d? tham kh?o
+- T�ch t?ng lab th�nh folder ri�ng
+- Gi? l?i Lab 2 ? m�y local nhung kh�ng public tr�n GitHub
