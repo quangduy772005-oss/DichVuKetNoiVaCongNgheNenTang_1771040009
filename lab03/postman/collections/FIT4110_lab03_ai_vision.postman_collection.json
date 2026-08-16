@@ -1,0 +1,218 @@
+{
+  "info": {
+    "_postman_id": "fit4110-lab03-ai-vision",
+    "name": "FIT4110 Lab03 - AI Vision Contract Tests",
+    "description": "Postman Collection for AI Vision integration testing.",
+    "schema": "https://schema.getpostman.com/json/collection/v2.1.0/collection.json"
+  },
+  "event": [
+    {
+      "listen": "prerequest",
+      "script": {
+        "type": "text/javascript",
+        "exec": [
+          "const prefix = pm.environment.get('tracePrefix') || 'fit4110-lab03';",
+          "pm.variables.set('traceId', prefix + '-' + Date.now());",
+          "pm.request.headers.upsert({ key: 'X-Trace-Id', value: pm.variables.get('traceId') });"
+        ]
+      }
+    }
+  ],
+  "variable": [],
+  "item": [
+    {
+      "name": "00_Health",
+      "item": [
+        {
+          "name": "GET /health - AI Vision service alive",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{aiVisionMockUrl}}/health",
+              "host": [
+                "{{aiVisionMockUrl}}"
+              ],
+              "path": [
+                "health"
+              ]
+            }
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('Status code is 200', function () { pm.response.to.have.status(200); });",
+                  "pm.test('Service is ai-vision', function () {",
+                  "  const json = pm.response.json();",
+                  "  pm.expect(json.service).to.equal('ai-vision');",
+                  "});"
+                ]
+              }
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "name": "01_Functional",
+      "item": [
+        {
+          "name": "POST /detect - detect object in image",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              },
+              {
+                "key": "Authorization",
+                "value": "Bearer {{authToken}}"
+              }
+            ],
+            "url": {
+              "raw": "{{aiVisionMockUrl}}/detect",
+              "host": [
+                "{{aiVisionMockUrl}}"
+              ],
+              "path": [
+                "detect"
+              ]
+            },
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"camera_id\": \"CAM01\",\n  \"image_url\": \"https://example.com/frame.jpg\"\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            }
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('Status code is 200', function () { pm.response.to.have.status(200); });",
+                  "pm.test('Has required detection fields', function () {",
+                  "  const json = pm.response.json();",
+                  "  pm.expect(json).to.have.property('detection_id');",
+                  "  pm.expect(json).to.have.property('label');",
+                  "  pm.expect(json).to.have.property('confidence');",
+                  "  pm.expect(json).to.have.property('risk_level');",
+                  "});",
+                  "pm.test('Confidence is between 0 and 1', function () {",
+                  "  const json = pm.response.json();",
+                  "  pm.expect(json.confidence).to.be.above(0);",
+                  "  pm.expect(json.confidence).to.be.below(1);",
+                  "});"
+                ]
+              }
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "name": "02_Auth",
+      "item": [
+        {
+          "name": "POST /detect - missing token returns 401",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "url": {
+              "raw": "{{aiVisionMockUrl}}/detect",
+              "host": [
+                "{{aiVisionMockUrl}}"
+              ],
+              "path": [
+                "detect"
+              ]
+            },
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"camera_id\": \"CAM01\",\n  \"image_url\": \"https://example.com/frame.jpg\"\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            }
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('Status code is 401', function () { pm.response.to.have.status(401); });"
+                ]
+              }
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "name": "03_Negative",
+      "item": [
+        {
+          "name": "POST /detect - missing camera_id returns 400",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              },
+              {
+                "key": "Authorization",
+                "value": "Bearer {{authToken}}"
+              }
+            ],
+            "url": {
+              "raw": "{{aiVisionMockUrl}}/detect",
+              "host": [
+                "{{aiVisionMockUrl}}"
+              ],
+              "path": [
+                "detect"
+              ]
+            },
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"image_url\": \"https://example.com/frame.jpg\"\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            }
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('Status code is 400', function () { pm.response.to.have.status(400); });"
+                ]
+              }
+            }
+          ]
+        }
+      ]
+    }
+  ]
+}

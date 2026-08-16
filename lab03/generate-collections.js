@@ -1,0 +1,520 @@
+#!/usr/bin/env node
+const fs = require('fs');
+const path = require('path');
+
+// IoT Ingestion Collection
+const iotCollection = {
+  info: {
+    _postman_id: "fit4110-lab03-iot-ingestion",
+    name: "FIT4110 Lab03 - IoT Ingestion Contract Tests",
+    description: "Postman Collection mẫu cho Buổi 3: Mock Server, provider-side tests, consumer-side smoke tests và Newman evidence.",
+    schema: "https://schema.getpostman.com/json/collection/v2.1.0/collection.json"
+  },
+  event: [
+    {
+      listen: "prerequest",
+      script: {
+        type: "text/javascript",
+        exec: [
+          "const prefix = pm.environment.get('tracePrefix') || 'fit4110-lab03';",
+          "pm.variables.set('traceId', prefix + '-' + Date.now());",
+          "pm.request.headers.upsert({ key: 'X-Trace-Id', value: pm.variables.get('traceId') });"
+        ]
+      }
+    }
+  ],
+  variable: [],
+  item: [
+    {
+      name: "00_Health",
+      item: [
+        {
+          name: "GET /health - service is alive",
+          request: {
+            method: "GET",
+            header: [],
+            url: {
+              raw: "{{baseUrl}}/health",
+              host: ["{{baseUrl}}"],
+              path: ["health"]
+            }
+          },
+          event: [
+            {
+              listen: "test",
+              script: {
+                type: "text/javascript",
+                exec: [
+                  "pm.test('Status code is 200', function () { pm.response.to.have.status(200); });",
+                  "pm.test('Response has service status', function () {",
+                  "  const json = pm.response.json();",
+                  "  pm.expect(json).to.have.property('status', 'ok');",
+                  "  pm.expect(json).to.have.property('service');",
+                  "});"
+                ]
+              }
+            }
+          ]
+        }
+      ]
+    },
+    {
+      name: "01_Functional",
+      item: [
+        {
+          name: "POST /readings - happy path creates reading",
+          request: {
+            method: "POST",
+            header: [
+              { key: "Content-Type", value: "application/json" },
+              { key: "Authorization", value: "Bearer {{authToken}}" }
+            ],
+            url: {
+              raw: "{{baseUrl}}/readings",
+              host: ["{{baseUrl}}"],
+              path: ["readings"]
+            },
+            body: {
+              mode: "raw",
+              raw: "{\n  \"device_id\": \"ESP32-LAB-A01\",\n  \"metric\": \"temperature\",\n  \"value\": 31.5,\n  \"unit\": \"celsius\",\n  \"timestamp\": \"2026-05-13T08:30:00+07:00\"\n}",
+              options: { raw: { language: "json" } }
+            }
+          },
+          event: [
+            {
+              listen: "test",
+              script: {
+                type: "text/javascript",
+                exec: [
+                  "pm.test('Status code is 201', function () { pm.response.to.have.status(201); });",
+                  "pm.test('Response has reading_id', function () {",
+                  "  const json = pm.response.json();",
+                  "  pm.expect(json).to.have.property('reading_id');",
+                  "  pm.expect(json.reading_id).to.be.a('string');",
+                  "});",
+                  "pm.test('Response has accepted flag', function () {",
+                  "  const json = pm.response.json();",
+                  "  pm.expect(json).to.have.property('accepted', true);",
+                  "});",
+                  "pm.test('Response time is less than 500ms', function () {",
+                  "  pm.expect(pm.response.responseTime).to.be.below(500);",
+                  "});"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          name: "GET /readings/latest - retrieve latest readings",
+          request: {
+            method: "GET",
+            header: [
+              { key: "Authorization", value: "Bearer {{authToken}}" }
+            ],
+            url: {
+              raw: "{{baseUrl}}/readings/latest?limit=10",
+              host: ["{{baseUrl}}"],
+              path: ["readings", "latest"],
+              query: [{ key: "limit", value: "10" }]
+            }
+          },
+          event: [
+            {
+              listen: "test",
+              script: {
+                type: "text/javascript",
+                exec: [
+                  "pm.test('Status code is 200', function () { pm.response.to.have.status(200); });",
+                  "pm.test('Response has data array', function () {",
+                  "  const json = pm.response.json();",
+                  "  pm.expect(json).to.have.property('data');",
+                  "  pm.expect(json.data).to.be.an('array');",
+                  "});"
+                ]
+              }
+            }
+          ]
+        }
+      ]
+    },
+    {
+      name: "02_Auth",
+      item: [
+        {
+          name: "POST /readings - missing token should return 401",
+          request: {
+            method: "POST",
+            header: [
+              { key: "Content-Type", value: "application/json" }
+            ],
+            url: {
+              raw: "{{baseUrl}}/readings",
+              host: ["{{baseUrl}}"],
+              path: ["readings"]
+            },
+            body: {
+              mode: "raw",
+              raw: "{\n  \"device_id\": \"ESP32-LAB-A01\",\n  \"metric\": \"temperature\",\n  \"value\": 31.5,\n  \"unit\": \"celsius\",\n  \"timestamp\": \"2026-05-13T08:30:00+07:00\"\n}",
+              options: { raw: { language: "json" } }
+            }
+          },
+          event: [
+            {
+              listen: "test",
+              script: {
+                type: "text/javascript",
+                exec: [
+                  "pm.test('Status code is 401 when token missing', function () { pm.response.to.have.status(401); });",
+                  "pm.test('Error response has problem details', function () {",
+                  "  const json = pm.response.json();",
+                  "  pm.expect(json).to.have.property('status', 401);",
+                  "});"
+                ]
+              }
+            }
+          ]
+        }
+      ]
+    },
+    {
+      name: "03_Negative",
+      item: [
+        {
+          name: "POST /readings - missing device_id should return 400",
+          request: {
+            method: "POST",
+            header: [
+              { key: "Content-Type", value: "application/json" },
+              { key: "Authorization", value: "Bearer {{authToken}}" }
+            ],
+            url: {
+              raw: "{{baseUrl}}/readings",
+              host: ["{{baseUrl}}"],
+              path: ["readings"]
+            },
+            body: {
+              mode: "raw",
+              raw: "{\n  \"metric\": \"temperature\",\n  \"value\": 31.5,\n  \"unit\": \"celsius\",\n  \"timestamp\": \"2026-05-13T08:30:00+07:00\"\n}",
+              options: { raw: { language: "json" } }
+            }
+          },
+          event: [
+            {
+              listen: "test",
+              script: {
+                type: "text/javascript",
+                exec: [
+                  "pm.test('Status code is 400 when device_id missing', function () { pm.response.to.have.status(400); });",
+                  "pm.test('Error has problem details', function () {",
+                  "  const json = pm.response.json();",
+                  "  pm.expect(json).to.have.property('status', 400);",
+                  "  pm.expect(json).to.have.property('detail');",
+                  "});"
+                ]
+              }
+            }
+          ]
+        }
+      ]
+    },
+    {
+      name: "04_Boundary",
+      item: [
+        {
+          name: "POST /readings - boundary temperature high (80°C)",
+          request: {
+            method: "POST",
+            header: [
+              { key: "Content-Type", value: "application/json" },
+              { key: "Authorization", value: "Bearer {{authToken}}" }
+            ],
+            url: {
+              raw: "{{baseUrl}}/readings",
+              host: ["{{baseUrl}}"],
+              path: ["readings"]
+            },
+            body: {
+              mode: "raw",
+              raw: "{\n  \"device_id\": \"ESP32-LAB-A01\",\n  \"metric\": \"temperature\",\n  \"value\": 80,\n  \"unit\": \"celsius\",\n  \"timestamp\": \"2026-05-13T08:30:00+07:00\"\n}",
+              options: { raw: { language: "json" } }
+            }
+          },
+          event: [
+            {
+              listen: "test",
+              script: {
+                type: "text/javascript",
+                exec: [
+                  "pm.test('Status code is 201 for boundary value', function () { pm.response.to.have.status(201); });"
+                ]
+              }
+            }
+          ]
+        }
+      ]
+    },
+    {
+      name: "05_ConsumerSide_AIVision",
+      item: [
+        {
+          name: "GET /health - AI Vision mock server alive",
+          request: {
+            method: "GET",
+            header: [],
+            url: {
+              raw: "{{aiVisionMockUrl}}/health",
+              host: ["{{aiVisionMockUrl}}"],
+              path: ["health"]
+            }
+          },
+          event: [
+            {
+              listen: "test",
+              script: {
+                type: "text/javascript",
+                exec: [
+                  "pm.test('AI Vision mock server is alive', function () { pm.response.to.have.status(200); });",
+                  "pm.test('Service name is ai-vision', function () {",
+                  "  const json = pm.response.json();",
+                  "  pm.expect(json.service).to.equal('ai-vision');",
+                  "});"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          name: "POST /detect - consumer smoke test with AI Vision mock",
+          request: {
+            method: "POST",
+            header: [
+              { key: "Content-Type", value: "application/json" },
+              { key: "Authorization", value: "Bearer {{authToken}}" }
+            ],
+            url: {
+              raw: "{{aiVisionMockUrl}}/detect",
+              host: ["{{aiVisionMockUrl}}"],
+              path: ["detect"]
+            },
+            body: {
+              mode: "raw",
+              raw: "{\n  \"camera_id\": \"CAM01\",\n  \"image_url\": \"https://example.com/frame.jpg\"\n}",
+              options: { raw: { language: "json" } }
+            }
+          },
+          event: [
+            {
+              listen: "test",
+              script: {
+                type: "text/javascript",
+                exec: [
+                  "pm.test('AI Vision detects and returns 200', function () { pm.response.to.have.status(200); });",
+                  "pm.test('Response has detection_id', function () {",
+                  "  const json = pm.response.json();",
+                  "  pm.expect(json).to.have.property('detection_id');",
+                  "});",
+                  "pm.test('Confidence is between 0 and 1', function () {",
+                  "  const json = pm.response.json();",
+                  "  pm.expect(json.confidence).to.be.above(0);",
+                  "  pm.expect(json.confidence).to.be.below(1);",
+                  "});"
+                ]
+              }
+            }
+          ]
+        }
+      ]
+    }
+  ]
+};
+
+// AI Vision Collection
+const aiVisionCollection = {
+  info: {
+    _postman_id: "fit4110-lab03-ai-vision",
+    name: "FIT4110 Lab03 - AI Vision Contract Tests",
+    description: "Postman Collection for AI Vision integration testing.",
+    schema: "https://schema.getpostman.com/json/collection/v2.1.0/collection.json"
+  },
+  event: [
+    {
+      listen: "prerequest",
+      script: {
+        type: "text/javascript",
+        exec: [
+          "const prefix = pm.environment.get('tracePrefix') || 'fit4110-lab03';",
+          "pm.variables.set('traceId', prefix + '-' + Date.now());",
+          "pm.request.headers.upsert({ key: 'X-Trace-Id', value: pm.variables.get('traceId') });"
+        ]
+      }
+    }
+  ],
+  variable: [],
+  item: [
+    {
+      name: "00_Health",
+      item: [
+        {
+          name: "GET /health - AI Vision service alive",
+          request: {
+            method: "GET",
+            header: [],
+            url: {
+              raw: "{{aiVisionMockUrl}}/health",
+              host: ["{{aiVisionMockUrl}}"],
+              path: ["health"]
+            }
+          },
+          event: [
+            {
+              listen: "test",
+              script: {
+                type: "text/javascript",
+                exec: [
+                  "pm.test('Status code is 200', function () { pm.response.to.have.status(200); });",
+                  "pm.test('Service is ai-vision', function () {",
+                  "  const json = pm.response.json();",
+                  "  pm.expect(json.service).to.equal('ai-vision');",
+                  "});"
+                ]
+              }
+            }
+          ]
+        }
+      ]
+    },
+    {
+      name: "01_Functional",
+      item: [
+        {
+          name: "POST /detect - detect object in image",
+          request: {
+            method: "POST",
+            header: [
+              { key: "Content-Type", value: "application/json" },
+              { key: "Authorization", value: "Bearer {{authToken}}" }
+            ],
+            url: {
+              raw: "{{aiVisionMockUrl}}/detect",
+              host: ["{{aiVisionMockUrl}}"],
+              path: ["detect"]
+            },
+            body: {
+              mode: "raw",
+              raw: "{\n  \"camera_id\": \"CAM01\",\n  \"image_url\": \"https://example.com/frame.jpg\"\n}",
+              options: { raw: { language: "json" } }
+            }
+          },
+          event: [
+            {
+              listen: "test",
+              script: {
+                type: "text/javascript",
+                exec: [
+                  "pm.test('Status code is 200', function () { pm.response.to.have.status(200); });",
+                  "pm.test('Has required detection fields', function () {",
+                  "  const json = pm.response.json();",
+                  "  pm.expect(json).to.have.property('detection_id');",
+                  "  pm.expect(json).to.have.property('label');",
+                  "  pm.expect(json).to.have.property('confidence');",
+                  "  pm.expect(json).to.have.property('risk_level');",
+                  "});",
+                  "pm.test('Confidence is between 0 and 1', function () {",
+                  "  const json = pm.response.json();",
+                  "  pm.expect(json.confidence).to.be.above(0);",
+                  "  pm.expect(json.confidence).to.be.below(1);",
+                  "});"
+                ]
+              }
+            }
+          ]
+        }
+      ]
+    },
+    {
+      name: "02_Auth",
+      item: [
+        {
+          name: "POST /detect - missing token returns 401",
+          request: {
+            method: "POST",
+            header: [
+              { key: "Content-Type", value: "application/json" }
+            ],
+            url: {
+              raw: "{{aiVisionMockUrl}}/detect",
+              host: ["{{aiVisionMockUrl}}"],
+              path: ["detect"]
+            },
+            body: {
+              mode: "raw",
+              raw: "{\n  \"camera_id\": \"CAM01\",\n  \"image_url\": \"https://example.com/frame.jpg\"\n}",
+              options: { raw: { language: "json" } }
+            }
+          },
+          event: [
+            {
+              listen: "test",
+              script: {
+                type: "text/javascript",
+                exec: [
+                  "pm.test('Status code is 401', function () { pm.response.to.have.status(401); });"
+                ]
+              }
+            }
+          ]
+        }
+      ]
+    },
+    {
+      name: "03_Negative",
+      item: [
+        {
+          name: "POST /detect - missing camera_id returns 400",
+          request: {
+            method: "POST",
+            header: [
+              { key: "Content-Type", value: "application/json" },
+              { key: "Authorization", value: "Bearer {{authToken}}" }
+            ],
+            url: {
+              raw: "{{aiVisionMockUrl}}/detect",
+              host: ["{{aiVisionMockUrl}}"],
+              path: ["detect"]
+            },
+            body: {
+              mode: "raw",
+              raw: "{\n  \"image_url\": \"https://example.com/frame.jpg\"\n}",
+              options: { raw: { language: "json" } }
+            }
+          },
+          event: [
+            {
+              listen: "test",
+              script: {
+                type: "text/javascript",
+                exec: [
+                  "pm.test('Status code is 400', function () { pm.response.to.have.status(400); });"
+                ]
+              }
+            }
+          ]
+        }
+      ]
+    }
+  ]
+};
+
+// Write collections to files
+fs.writeFileSync(
+  path.join(__dirname, 'postman/collections/FIT4110_lab03_iot_ingestion.postman_collection.json'),
+  JSON.stringify(iotCollection, null, 2)
+);
+
+fs.writeFileSync(
+  path.join(__dirname, 'postman/collections/FIT4110_lab03_ai_vision.postman_collection.json'),
+  JSON.stringify(aiVisionCollection, null, 2)
+);
+
+console.log('✓ IoT Ingestion collection generated');
+console.log('✓ AI Vision collection generated');

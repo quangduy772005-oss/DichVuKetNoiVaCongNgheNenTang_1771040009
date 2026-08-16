@@ -1,0 +1,20 @@
+ID,Folder,Endpoint,Method,Scenario,Input file/body,Expected status,Expected response check,Type,Pass/Fail,Evidence
+TC01,Functional,/health,GET,Service is alive,-,200,status=ok + has service property,functional,PASS,Newman report
+TC02,Functional,/readings,POST,Create reading happy path,mock-data/sensor-reading-valid.json,201,"has reading_id, accepted=true, device_id=ESP32-LAB-A01",functional,PASS,Newman report
+TC03,Functional,/readings/latest,GET,Retrieve latest readings with limit=10,-,200,has data array with items,functional,PASS,Newman report
+TC04,Auth,/readings,POST,Missing authorization header,mock-data/sensor-reading-valid.json,401,Problem Details with status=401,auth,PASS,Newman report
+TC05,Auth,/readings,POST,Invalid bearer token,mock-data/sensor-reading-valid.json,401,Problem Details with status=401,auth,PASS,Newman report
+TC06,Auth,/readings/latest,GET,Missing authorization header,-,401,Problem Details with status=401,auth,PASS,Newman report
+TC07,Negative,/readings,POST,Missing device_id,mock-data/sensor-reading-invalid-missing-device.json,400,Problem Details + detail message,negative,PASS,Newman report
+TC08,Negative,/readings,POST,Invalid value type (string),"{""device_id"":""ESP32-LAB-A01"",""metric"":""temperature"",""value"":""not-a-number"",""unit"":""celsius"",""timestamp"":""2026-05-13T08:30:00+07:00""}",400,Problem Details,negative,PASS,Newman report
+TC09,Negative,/readings,POST,Empty JSON body,{},400,Problem Details,negative,PASS,Newman report
+TC10,Boundary,/readings,POST,Temperature at upper boundary (80°C),mock-data/sensor-reading-boundary.json,201,has reading_id + accepted=true,boundary,PASS,Newman report
+TC11,Boundary,/readings,POST,Temperature at lower boundary (-40°C),"{""device_id"":""ESP32-LAB-A01"",""metric"":""temperature"",""value"":-40,""unit"":""celsius"",""timestamp"":""2026-05-13T08:30:00+07:00""}",201,has reading_id,boundary,PASS,Newman report
+TC12,Boundary,/readings,POST,Temperature exceeds upper range (100°C),"{""device_id"":""ESP32-LAB-A01"",""metric"":""temperature"",""value"":100,""unit"":""celsius"",""timestamp"":""2026-05-13T08:30:00+07:00""}",400,Problem Details with range message,boundary,PASS,Newman report
+TC13,ConsumerSide,/health,GET,AI Vision mock server is alive,via aiVisionMockUrl,-,200,status=ok + service=ai-vision,consumer,PASS,Newman report
+TC14,ConsumerSide,/detect,POST,Consumer smoke test with AI Vision mock,"{""camera_id"":""CAM01"",""image_url"":""https://example.com/frame.jpg""}",200,"has detection_id, label, confidence (0-1), risk_level",consumer,PASS,Newman report
+TC15,Reliability,All,GET/POST,Response time check,various,success,response time < 500ms,reliability,PASS,Newman report
+TC16,AIVision,/health,GET,AI Vision service alive,-,200,status=ok + service=ai-vision,functional,PASS,Newman report
+TC17,AIVision,/detect,POST,Detect object in image happy path,"{""camera_id"":""CAM01"",""image_url"":""https://example.com/frame.jpg""}",200,"has detection_id, label, confidence, risk_level",functional,PASS,Newman report
+TC18,AIVision,/detect,POST,Missing camera_id,"{""image_url"":""https://example.com/frame.jpg""}",400,Problem Details,negative,PASS,Newman report
+TC19,AIVision,/detect,POST,Missing authorization header,"{""camera_id"":""CAM01"",""image_url"":""https://example.com/frame.jpg""}",401,Problem Details with status=401,auth,PASS,Newman report
